@@ -1,0 +1,122 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "mysql"
+    url      = env("DATABASE_URL")
+}
+
+enum Role {
+    User
+    Admin
+}
+
+enum Gender {
+    select_gender
+    male
+    female
+    other
+}
+
+model User {
+    id              Int               @id @default(autoincrement())
+    role            Role              @default(User)
+    firstname       String            @map("first_name")
+    lastname        String            @map("last_name")
+    gender          Gender?           @default(other)
+    email           String
+    phone           String            @db.VarChar(10)
+    address         String?           @db.VarChar(255)
+    username        String            @unique @db.VarChar(30)
+    password        String            @db.VarChar(72)
+    profile         String?
+    shippingAddress ShippingAddress[]
+    cart            Cart[]
+    Order           Order[]
+}
+
+enum Status {
+    Pending
+    Currently_shipping
+    Successful_delivery
+    Cancel
+}
+
+enum Payment_Method {
+    Pay_on_delivery
+    Bank
+    QR_CODE
+}
+
+model Order {
+    id                Int              @id @default(autoincrement())
+    order_date        DateTime         @default(now())
+    total_amount      Int?             @default(0)
+    status            Status?          @default(Pending)
+    payment_method    Payment_Method   @default(Pay_on_delivery) @map("payment_method")
+    amount            Int?
+    payment_img       String?
+    cart              Cart             @relation(fields: [cartId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    cartId            Int
+    user              User             @relation(fields: [userId], references: [id])
+    userId            Int              @map("user_id")
+    shippingAddress   ShippingAddress? @relation(fields: [shippingAddressId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    shippingAddressId Int
+
+}
+
+model Cart {
+    id            Int     @id @default(autoincrement())
+    cart_quantity Int?
+    user          User    @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    userId        Int     @map("user_id")
+    book          Book    @relation(fields: [bookId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    bookId        Int     @map("book_id")
+    Order         Order[]
+}
+
+model Genres {
+    id         Int    @id @default(autoincrement())
+    genre_name String
+    book       Book[]
+}
+
+model Book {
+    id             Int      @id @default(autoincrement())
+    title          String?  @map("title")
+    author         String?
+    description    String?  @db.VarChar(255)
+    price          Int?
+    stock_quantity Int?     @default(0)
+    bookimg        String?
+    date_created   DateTime @default(now())
+
+    cart    Cart[]
+    genres  Genres    @relation(fields: [genreId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+    genreId Int
+    Promote Promote[]
+}
+
+model ShippingAddress {
+    id               Int     @id @default(autoincrement())
+    recipient_fname  String?
+    recipient_lname  String?
+    shipping_address String? @db.VarChar(255)
+    district         String?
+    prefecture       String?
+    province         String?
+    zip_code         String?
+    phone            String?
+    user             User    @relation(fields: [userId], references: [id])
+    userId           Int     @map("user_id")
+    Order            Order[]
+}
+
+model Promote {
+    id           Int    @id @default(autoincrement())
+    promote_name String @map("promote_name")
+    promote_img  String
+    bookId       Int    @map("book_id")
+    book         Book   @relation(fields: [bookId], references: [id])
+}
