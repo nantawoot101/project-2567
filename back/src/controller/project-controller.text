@@ -1,0 +1,140 @@
+const db = require('../models/db');
+const fs = require('fs');
+const path = require('path');
+
+exports.newProject = async (req, res) => {
+    const { project_title, member_id, content, creator, development_type, advisor, id_student,school_year } = req.body;
+
+    try {
+      if (!member_id) {
+        return res.status(400).json({ error: 'member_id is required' });
+      }
+    
+      const newProject = await db.project.create({
+        data: {
+          project_title,
+          member: {
+            connect: { member_id: member_id } // เชื่อมโยงกับ member โดยใช้ member_id
+          },
+          content,
+          creator,
+          id_student,
+          development_type,
+          advisor,
+          school_year
+        }
+      });
+    
+      res.status(201).json(newProject);
+    } catch (error) {
+      console.error('Error creating project:', error);
+      res.status(500).json({ error: 'Failed to create project', details: error.message });
+    }
+}
+
+  exports.getAllProjects = async (req, res) => {
+    try {
+        const allProjects = await db.project.findMany({
+            include: {
+                member: true, // ถ้าคุณต้องการดึงข้อมูลของ member ที่สัมพันธ์กัน
+                Doc: true     // ถ้าคุณต้องการดึงข้อมูลจากตาราง Doc ที่สัมพันธ์กัน
+            }
+        });
+
+        res.status(200).json(allProjects);
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to retrieve projects', details: error.message });
+    }
+};
+
+// ฟังก์ชันใหม่สำหรับแสดงข้อมูล Project โดยใช้ id_project
+exports.getProjectById = async (req, res) => {
+    const { id_project } = req.params;
+
+    try {
+        const project = await db.project.findUnique({
+            where: { id_project: parseInt(id_project) },
+            include: {
+                member: true, // ดึงข้อมูลของ member ที่สัมพันธ์กัน
+                Doc: true     // ดึงข้อมูลจากตาราง Doc ที่สัมพันธ์กัน
+            }
+        });
+
+        if (project) {
+            res.status(200).json(project);
+        } else {
+            res.status(404).json({ error: 'Project not found' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to retrieve project', details: error.message });
+    }
+};
+
+// ฟังก์ชันใหม่สำหรับแสดงข้อมูลโปรเจกต์ตาม member_id
+exports.getProjectsByMemberId = async (req, res) => {
+    const { member_id } = req.params;
+
+    try {
+        const projects = await db.project.findMany({
+            where: { member_id: parseInt(member_id) },
+            include: {
+                member: true, // ดึงข้อมูลของ member ที่สัมพันธ์กัน
+                Doc: true     // ดึงข้อมูลจากตาราง Doc ที่สัมพันธ์กัน
+            }
+        });
+
+        if (projects.length > 0) {
+            res.status(200).json(projects);
+        } else {
+            res.status(404).json({ error: 'No projects found for this member' });
+        }
+    } catch (error) {
+        res.status(500).json({ error: 'Failed to retrieve projects', details: error.message });
+    }
+};
+
+exports.deleteProject = async (req, res) => {
+    const { id_project } = req.params;
+
+    try {
+        // แปลง id_project ให้เป็นตัวเลข
+        const projectId = parseInt(id_project, 10);
+        
+        if (isNaN(projectId)) {
+            return res.status(400).json({ error: 'Invalid project ID' });
+        }
+
+        // ดึงข้อมูลโปรเจกต์ที่ต้องการลบ
+        const project = await db.project.findUnique({
+            where: { id_project: projectId },
+            include: { Doc: true } // ดึงข้อมูลเอกสารที่เกี่ยวข้อง
+        });
+
+        if (!project) {
+            return res.status(404).json({ error: 'Project not found' });
+        }
+
+        // ลบไฟล์ที่เกี่ยวข้อง
+        if (project.Doc && project.Doc.length > 0) {
+            project.Doc.forEach(doc => {
+                const fileName = doc.file_name;
+                if (fileName) { // ตรวจสอบว่า fileName ไม่เป็น undefined หรือ null
+                    const filePath = path.join(__dirname, '../uploads/docs/', fileName);
+                    if (fs.existsSync(filePath)) {
+                        fs.unlinkSync(filePath);
+                    }
+                }
+            });
+        }
+
+        // ลบโปรเจกต์ออกจากฐานข้อมูล
+        await db.project.delete({
+            where: { id_project: projectId }
+        });
+
+        res.status(200).json({ message: 'Project deleted successfully' });
+    } catch (error) {
+        console.error('Error deleting project:', error);
+        res.status(500).json({ error: 'Failed to delete project', details: error.message });
+    }
+};

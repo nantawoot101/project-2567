@@ -1,0 +1,171 @@
+generator client {
+    provider = "prisma-client-js"
+}
+
+datasource db {
+    provider = "mysql"
+    url      = env("DATABASE_URL")
+}
+
+model Role {
+    role_id     Int      @id @default(autoincrement())
+    role_name   String   @db.VarChar(50)
+    role_des    String?  @db.VarChar(100)
+    role_status String   @db.VarChar(50)
+    Member      Member[]
+
+    @@map("tb_role")
+}
+
+model Member {
+    member_id       Int       @id @default(autoincrement())
+    role_id         Int       @default(11)
+    username_id     String    @unique @db.VarChar(50)
+    password_id     String    @db.VarChar(16)
+    Id_student      String?   @db.VarChar(13)
+    member_title    String    @db.VarChar(20)
+    member_name     String    @db.VarChar(50)
+    member_lastname String    @db.VarChar(50)
+    member_email    String    @db.VarChar(50)
+    phone_number    String    @db.VarChar(10)
+    faculity        String    @db.VarChar(50)
+    branch          String    @db.VarChar(50)
+    status          String    @db.VarChar(40)
+    created_at      DateTime  @default(now())
+    role            Role      @relation(fields: [role_id], references: [role_id])
+    projects        Project[]
+    comment Comment[]
+
+    @@map("tb_member")
+}
+
+model Admin {
+    admin_id    Int    @id @default(autoincrement())
+    admin_title String @db.VarChar(10)
+    admin_name  String @db.VarChar(50)
+    admin_lastn String @db.VarChar(50)
+    username    String @db.VarChar(50)
+    password    String @db.VarChar(16)
+
+    @@map("tb_Admin")
+}
+
+model Project {
+    id_project       Int      @id @default(autoincrement())
+    project_title    String   @db.VarChar(255)
+    development_type String   @db.VarChar(255)
+    id_advisor       Int
+    advisor          Advisor  @relation(fields: [id_advisor], references: [id_advisor])
+    school_year      String   @db.VarChar(255)
+    member           Member?  @relation(fields: [member_id], references: [member_id])
+    member_id        Int?
+    id_chairman      Int
+    chairman         Chairman @relation(fields: [id_chairman], references: [id_chairman])
+    expert           Expert   @relation(fields: [id_expert], references: [id_expert])
+    id_expert        Int
+
+    Doc     Doc[]
+    Creator Creator[]
+    View    View[]
+
+    @@map("tb_project")
+}
+
+model Advisor {
+    id_advisor       Int    @id @default(autoincrement())
+    advisor_title    String @db.VarChar(255)
+    advisor_name     String @db.VarChar(255)
+    advisor_lastname String @db.VarChar(255)
+    branch           String @db.VarChar(255)
+    group            String @db.VarChar(255)
+    phone_number     String @db.VarChar(255)
+    email            String @db.VarChar(255)
+
+    Project Project[]
+
+    @@map("tb_advisor")
+}
+
+model Expert {
+    id_expert       Int    @id @default(autoincrement())
+    expert_title    String @db.VarChar(255)
+    expert_name     String @db.VarChar(255)
+    expert_lastname String @db.VarChar(255)
+    branch          String @db.VarChar(255)
+    group           String @db.VarChar(255)
+    phone_number    String @db.VarChar(255)
+    email           String @db.VarChar(255)
+
+    Project Project[]
+
+    @@map("tb_expert")
+}
+
+model Chairman {
+    id_chairman       Int    @id @default(autoincrement())
+    chairman_title    String @db.VarChar(255)
+    chairman_name     String @db.VarChar(255)
+    chairman_lastname String @db.VarChar(255)
+    branch            String @db.VarChar(255)
+    group             String @db.VarChar(255)
+    phone_number      String @db.VarChar(255)
+    email             String @db.VarChar(255)
+
+    Project Project[]
+
+    @@map("tb_chairman")
+}
+
+model Creator {
+    id         Int     @id @default(autoincrement())
+    creator    String  @db.VarChar(255)
+    id_student String  @db.VarChar(13)
+    project    Project @relation(fields: [id_project], references: [id_project])
+    id_project Int
+
+    @@map("tb_creator")
+}
+
+model Doc {
+    id           Int    @id @default(autoincrement())
+    file_type    String @db.VarChar(50)
+    id_project   Int
+    name_project String @db.VarChar(50)
+    name_file    String @db.VarChar(50)
+    file_size    String @db.VarChar(50)
+    file_path    String @db.VarChar(255)
+
+    project Project   @relation(fields: [id_project], references: [id_project])
+    dowload dowload[]
+
+    @@map("tb_Doc")
+}
+
+model View {
+    id          Int      @id @default(autoincrement())
+    project     Project  @relation(fields: [id_project], references: [id_project])
+    id_project  Int
+    clickCount  Int      @default(0)
+    lastClicked DateTime @default(now())
+
+    @@map("tb_View") // Ensure each member can only have one entry per project
+}
+
+model dowload {
+    id           Int @id @default(autoincrement())
+    view_dowload Int @default(0)
+    doc          Doc @relation(fields: [id_doc], references: [id])
+    id_doc       Int
+
+    @@map("tb_dowload") // Ensure each member can only have one entry per project
+}
+
+model Comment {
+    id_comment Int @id @default(autoincrement())
+    comment String 
+    like Int
+    member Member? @relation(fields: [member_id], references: [member_id])
+    member_id Int?
+
+    @@map("comment")
+}
